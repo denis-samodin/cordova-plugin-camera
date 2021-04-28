@@ -47,28 +47,8 @@ public class ExifHelper {
     private ExifInterface inFile = null;
     private ExifInterface outFile = null;
 
-    /**
-     * The file before it is compressed
-     *
-     * @param fileDescriptor
-     * @throws IOException
-     */
-    public void createInFile(FileDescriptor fileDescriptor) throws IOException {
-        this.inFile = new ExifInterface(fileDescriptor);
-    }
-
     public void createInFile(String filePath) throws IOException {
         this.inFile = new ExifInterface(filePath);
-    }
-
-    /**
-     * The file after it has been compressed
-     *
-     * @param fileDescriptor
-     * @throws IOException
-     */
-    public void createOutFile(FileDescriptor fileDescriptor) throws IOException {
-        this.outFile = new ExifInterface(fileDescriptor);
     }
 
     public void createOutFile(String filePath) throws IOException {

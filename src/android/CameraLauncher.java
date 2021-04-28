@@ -486,26 +486,9 @@ public class CameraLauncher extends CordovaPlugin implements MediaScannerConnect
                 bitmap.compress(compressFormat, quality, outputStream);
                 outputStream.close();
 
-                // Restore exif data to file
+                // Restore orientation data to file
                 if (encodingType == JPEG) {
-                    try {
-                        exif.createInFile(FileHelper.getRealPathFromURI(getContext(), sourceUri));
-                        exif.readExifData();
-                        rotate = exif.getOrientation();
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                    //We just finished rotating it by an arbitrary orientation, just make sure it's normal
-                    if (rotate != ExifInterface.ORIENTATION_NORMAL) {
-                        exif.resetOrientation();
-                    }
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-                        exif.createOutFile(FileHelper.getRealPathFromURI(getContext(), uri));
-                    } else {
-                        exif.createOutFile(FileHelper.createFileDescriptor(getContext(), uri, "w"));
-                    }
-                    exif.writeExifData();
+                    FileHelper.copyOrientation(cordova, sourceUri, uri);
                 }
 
                 // Send Uri back to JavaScript for viewing image
@@ -595,7 +578,7 @@ public class CameraLauncher extends CordovaPlugin implements MediaScannerConnect
                 if (this.correctOrientation && this.orientationCorrected) {
                     exifData.resetOrientation();
                 }
-                exifData.createOutFile(FileHelper.createFileDescriptor(getContext(), outputUri, "w"));
+                exifData.createOutFile(outputUri.toString());
                 exifData.writeExifData();
                 exifData = null;
             } catch (IOException e) {
@@ -740,8 +723,11 @@ public class CameraLauncher extends CordovaPlugin implements MediaScannerConnect
                             saveCameraPhotoToFile(tmpFile, intent);
                             performCrop(tmpFile, destType, intent);
                         } else {
-                            FileHelper.createThumbnails(imageUri, getContentResolver());
-                            performCrop(imageUri, destType, intent);
+                            if (FileHelper.createThumbnails(imageUri, getContentResolver()) != null || Build.VERSION.SDK_INT != Build.VERSION_CODES.Q) {
+                                performCrop(imageUri, destType, intent);
+                            } else {
+                                this.processResultFromCamera(destType, intent);
+                            }
                         }
                     } else {
                         this.processResultFromCamera(destType, intent);
@@ -896,6 +882,7 @@ public class CameraLauncher extends CordovaPlugin implements MediaScannerConnect
             InputStream fileStream = getContentResolver().openInputStream(imageUrl);
             if (fileStream != null) {
                 // Generate a temporary file
+                //Work in internal storage, don't need use Scoped Storage
                 String timeStamp = new SimpleDateFormat(TIME_FORMAT).format(new Date());
                 String fileName = "IMG_" + timeStamp + (encodingType == JPEG ? JPEG_EXTENSION : PNG_EXTENSION);
                 localFile = new File(FileHelper.getTempDirectoryPath(getContext()) + fileName);

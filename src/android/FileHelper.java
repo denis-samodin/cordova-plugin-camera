@@ -17,19 +17,19 @@
 package org.apache.cordova.camera;
 
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.ContentResolver;
 import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
 import android.database.DatabaseUtils;
-import android.graphics.Bitmap;
+import android.media.ExifInterface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
-import android.util.Size;
 import android.webkit.MimeTypeMap;
 
 import org.apache.cordova.CordovaInterface;
@@ -119,26 +119,26 @@ public class FileHelper {
         return dest;
     }
 
-    public static void createThumbnails(Uri uri, ContentResolver contentResolver) throws IOException {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            return;
+    public static Uri createThumbnails(Uri uri, ContentResolver contentResolver) throws IOException {
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.Q) {
+            return null;
         }
+        Uri thumbnailsUri = saveThumbnails(uri, contentResolver);
+        // linkThumbnailsToImage(uri,contentResolver,thumbnailsUri.getLastPathSegment());
+        return thumbnailsUri;
+    }
 
-        /* Bitmap bitmap = MediaStore.Images.Thumbnails.getThumbnail(contentResolver, imageId, MediaStore.Images.Thumbnails.MICRO_KIND, null);*/
-        Bitmap bitmap = contentResolver.loadThumbnail(uri, new Size(96, 96), null);
-        LOG.d(LOG_TAG, "bitmap width = " + bitmap.getWidth());
+    private static Uri saveThumbnails(Uri uri, ContentResolver contentResolver) {
         String id = uri.getLastPathSegment();
         ContentValues contentValues = new ContentValues();
-        contentValues.put(MediaStore.Images.ImageColumns.MINI_THUMB_MAGIC, id);
-        int updated = contentResolver.update(uri, contentValues, null, null);
-        int imageId = 0;
-      /*  DatabaseUtils.dumpCursor(cursor);
-        //  int columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns._ID);
-        // imageId = cursor.getInt(columnIndex);
-        cursor.close();*/
-        Cursor cursor = contentResolver.query(MediaStore.Images.Thumbnails.getContentUri(getMediaStoreVolume()), null, null, null);
-        DatabaseUtils.dumpCursor(cursor);
-        cursor.close();
+        contentValues.put(MediaStore.Images.Thumbnails.WIDTH, 96);
+        contentValues.put(MediaStore.Images.Thumbnails.HEIGHT, 96);
+        contentValues.put(MediaStore.Images.Thumbnails.KIND, MediaStore.Images.Thumbnails.MICRO_KIND);
+        contentValues.put(MediaStore.Images.Thumbnails.DATA, uri.toString());
+        contentValues.put(MediaStore.Images.Thumbnails.IMAGE_ID, id);
+        Uri volume = MediaStore.Images.Thumbnails.getContentUri(getMediaStoreVolume());
+        Uri thumbnailsUri = contentResolver.insert(volume, contentValues);
+        return thumbnailsUri;
     }
 
     private static String getMimetypeForFormat(int outputFormat) {
@@ -340,6 +340,57 @@ public class FileHelper {
                     uri, mode
             ).getFileDescriptor();
         }
+    }
+
+    @TargetApi(Build.VERSION_CODES.O)
+    private static void copyOrientationOreo(CordovaInterface cordovaInterface, Uri source, Uri destination) throws IOException {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            ExifHelper exif = new ExifHelper();
+            int rotate = 0;
+            try {
+                exif.createInFile(FileHelper.getRealPathFromURI(cordovaInterface.getContext(), source));
+                exif.readExifData();
+                rotate = exif.getOrientation();
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (rotate != ExifInterface.ORIENTATION_NORMAL) {
+                exif.resetOrientation();
+            }
+            exif.createOutFile(FileHelper.getRealPathFromURI(cordovaInterface.getContext(), destination));
+            exif.writeExifData();
+        }
+    }
+
+    @TargetApi(Build.VERSION_CODES.Q)
+    private static void copyOrientationQ(CordovaInterface cordovaInterface, Uri source, Uri destination) {
+        int orientation = getOrientation(cordovaInterface.getContext().getContentResolver(), source);
+        if (orientation <= 0) {
+            return;
+        }
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(MediaStore.MediaColumns.ORIENTATION, orientation);
+        cordovaInterface.getContext().getContentResolver().update(destination, contentValues, null, null);
+    }
+
+    public static void copyOrientation(CordovaInterface cordovaInterface, Uri source, Uri destination) throws IOException {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            copyOrientationOreo(cordovaInterface, source, destination);
+            return;
+        }
+        copyOrientationQ(cordovaInterface, source, destination);
+    }
+
+    @TargetApi(Build.VERSION_CODES.Q)
+    private static int getOrientation(ContentResolver contentResolver, Uri uri) {
+        int orientation = -1;
+        Cursor cursor = contentResolver.query(uri, new String[]{MediaStore.Images.ImageColumns.ORIENTATION}, null, null);
+        DatabaseUtils.dumpCursor(cursor);
+        cursor.moveToFirst();
+        orientation = cursor.getInt(0);
+        cursor.close();
+        return orientation;
     }
 
     public static String getMimeTypeForExtension(String path) {
