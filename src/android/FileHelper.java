@@ -22,11 +22,14 @@ import android.content.ContentUris;
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.Cursor;
+import android.database.DatabaseUtils;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.util.Size;
 import android.webkit.MimeTypeMap;
 
 import org.apache.cordova.CordovaInterface;
@@ -53,6 +56,7 @@ import static org.apache.cordova.camera.CameraLauncher.PNG_MIME_TYPE;
 public class FileHelper {
     private static final String TIME_FORMAT = "yyyyMMdd_HHmmss";
     private static final String LOG_TAG = "FileHelper";
+    private static final String SCHEME_FILE = "file";
 
     /**
      * Returns the real path of the given URI string.
@@ -80,8 +84,8 @@ public class FileHelper {
         String timeStamp = new SimpleDateFormat(TIME_FORMAT).format(new Date());
         contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, "IMG_" + timeStamp + "_" + namePostfix + (encodingType == JPEG ? JPEG_EXTENSION : PNG_EXTENSION));
         contentValues.put(MediaStore.MediaColumns.MIME_TYPE, getMimetypeForFormat(encodingType));
-        Uri galleryOutputUri = resolver.insert(imagesCollections, contentValues);
-        return galleryOutputUri;
+        //    contentValues.put(MediaStore.Images.Thumbnails., getMimetypeForFormat(encodingType));
+        return resolver.insert(imagesCollections, contentValues);
     }
 
     public static Uri copyToInternalStorage(Context context, Uri sourceUri, int encodingType) throws IOException {
@@ -115,6 +119,28 @@ public class FileHelper {
         return dest;
     }
 
+    public static void createThumbnails(Uri uri, ContentResolver contentResolver) throws IOException {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return;
+        }
+
+        /* Bitmap bitmap = MediaStore.Images.Thumbnails.getThumbnail(contentResolver, imageId, MediaStore.Images.Thumbnails.MICRO_KIND, null);*/
+        Bitmap bitmap = contentResolver.loadThumbnail(uri, new Size(96, 96), null);
+        LOG.d(LOG_TAG, "bitmap width = " + bitmap.getWidth());
+        String id = uri.getLastPathSegment();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(MediaStore.Images.ImageColumns.MINI_THUMB_MAGIC, id);
+        int updated = contentResolver.update(uri, contentValues, null, null);
+        int imageId = 0;
+      /*  DatabaseUtils.dumpCursor(cursor);
+        //  int columnIndex = cursor.getColumnIndex(MediaStore.MediaColumns._ID);
+        // imageId = cursor.getInt(columnIndex);
+        cursor.close();*/
+        Cursor cursor = contentResolver.query(MediaStore.Images.Thumbnails.getContentUri(getMediaStoreVolume()), null, null, null);
+        DatabaseUtils.dumpCursor(cursor);
+        cursor.close();
+    }
+
     private static String getMimetypeForFormat(int outputFormat) {
         if (outputFormat == PNG) return PNG_MIME_TYPE;
         if (outputFormat == JPEG) return JPEG_MIME_TYPE;
@@ -124,7 +150,7 @@ public class FileHelper {
     public static Uri createTempFile(Context context, int encodingType) {
         String timeStamp = new SimpleDateFormat(TIME_FORMAT).format(new Date());
         String fileName = "IMG_" + timeStamp + (encodingType == JPEG ? JPEG_EXTENSION : PNG_EXTENSION);
-        File file = new File(FileHelper.getTempDirectoryPath(context) + fileName);
+        File file = new File(FileHelper.getTempDirectoryPath(context) + "/" + fileName);
         return Uri.fromFile(file);
     }
 
@@ -137,7 +163,12 @@ public class FileHelper {
 
     public static void deleteFileFromMediaStore(ContentResolver contentResolver, Uri uri) {
         if (uri == null) return;
-        contentResolver.delete(uri, null, null);
+        if (uri.getScheme().equalsIgnoreCase(SCHEME_FILE)) {
+            File file = new File(uri.getPath());
+            file.deleteOnExit();
+        } else {
+            contentResolver.delete(uri, null, null);
+        }
     }
 
     /**

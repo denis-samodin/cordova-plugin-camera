@@ -71,6 +71,10 @@ public class ExifHelper {
         this.outFile = new ExifInterface(fileDescriptor);
     }
 
+    public void createOutFile(String filePath) throws IOException {
+        this.outFile = new ExifInterface(filePath);
+    }
+
     /**
      * Reads all the EXIF data from the input file.
      */
