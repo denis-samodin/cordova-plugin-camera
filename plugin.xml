@@ -84,6 +84,8 @@
         <source-file src="src/android/CustomFileProvider.java" target-dir="src/org/apache/cordova/camera" />
         <source-file src="src/android/xml/camera_provider_paths.xml" target-dir="res/xml" />
 
+         <framework src="src/android/corodova_camera.gradle" custom="true" type="gradleReference" />
+
         <js-module src="www/CameraPopoverHandle.js" name="CameraPopoverHandle">
             <clobbers target="CameraPopoverHandle" />
           </js-module>
