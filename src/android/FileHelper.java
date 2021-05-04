@@ -46,12 +46,12 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-import static org.apache.cordova.camera.CameraLauncher.JPEG;
-import static org.apache.cordova.camera.CameraLauncher.JPEG_EXTENSION;
-import static org.apache.cordova.camera.CameraLauncher.JPEG_MIME_TYPE;
-import static org.apache.cordova.camera.CameraLauncher.PNG;
-import static org.apache.cordova.camera.CameraLauncher.PNG_EXTENSION;
-import static org.apache.cordova.camera.CameraLauncher.PNG_MIME_TYPE;
+import static org.apache.cordova.camera.BaseCameraManager.JPEG;
+import static org.apache.cordova.camera.BaseCameraManager.JPEG_EXTENSION;
+import static org.apache.cordova.camera.BaseCameraManager.JPEG_MIME_TYPE;
+import static org.apache.cordova.camera.BaseCameraManager.PNG;
+import static org.apache.cordova.camera.BaseCameraManager.PNG_EXTENSION;
+import static org.apache.cordova.camera.BaseCameraManager.PNG_MIME_TYPE;
 
 public class FileHelper {
     private static final String TIME_FORMAT = "yyyyMMdd_HHmmss";

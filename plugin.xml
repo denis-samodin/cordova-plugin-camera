@@ -57,10 +57,32 @@
         <config-file target="AndroidManifest.xml" parent="/*">
             <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
         </config-file>
+        <config-file target="AndroidManifest.xml" parent="application">
+           <provider
+            android:name="org.apache.cordova.camera.CustomFileProvider"
+            android:authorities="${applicationId}.cordova.plugin.camera.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/camera_provider_paths" />
+        </provider>
+        </config-file>
+        <config-file target="AndroidManifest.xml" parent="application">
+            <activity
+                android:name="com.theartofdev.edmodo.cropper.CropImageActivity"
+                android:theme="@style/Base.Theme.AppCompat" />
+        </config-file>
 
         <source-file src="src/android/CameraLauncher.java" target-dir="src/org/apache/cordova/camera" />
         <source-file src="src/android/FileHelper.java" target-dir="src/org/apache/cordova/camera" />
         <source-file src="src/android/ExifHelper.java" target-dir="src/org/apache/cordova/camera" />
+        <source-file src="src/android/BaseCameraManager.java" target-dir="src/org/apache/cordova/camera" />
+        <source-file src="src/android/CameraManagerAndroidLollipop.java" target-dir="src/org/apache/cordova/camera" />
+        <source-file src="src/android/CameraManagerAndroidQ.java" target-dir="src/org/apache/cordova/camera" />
+        <source-file src="src/android/ICameraManager.java" target-dir="src/org/apache/cordova/camera" />
+        <source-file src="src/android/CustomFileProvider.java" target-dir="src/org/apache/cordova/camera" />
+        <source-file src="src/android/xml/camera_provider_paths.xml" target-dir="res/xml" />
 
         <js-module src="www/CameraPopoverHandle.js" name="CameraPopoverHandle">
             <clobbers target="CameraPopoverHandle" />
